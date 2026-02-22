@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>予定インポーター | Maehes</title>
+    <title>予定インポーター | Maehe</title>
     <meta name="description" content="LINEメッセージなどのテキストから子どもの習い事スケジュールを自動抽出してICSファイルを作成します" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -129,6 +129,7 @@
         }
 
         .prompt-box {
+            position: relative;
             background: #1e1b4b;
             color: #c4b5fd;
             border-radius: 10px;
@@ -138,6 +139,31 @@
             line-height: 1.8;
             white-space: pre-wrap;
             font-family: monospace;
+        }
+
+        .copy-btn {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: rgba(196, 181, 253, 0.15);
+            border: 1px solid rgba(196, 181, 253, 0.3);
+            color: #c4b5fd;
+            font-size: 0.75rem;
+            font-weight: 700;
+            padding: 4px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.2s;
+            font-family: var(--font);
+        }
+
+        .copy-btn:hover {
+            background: rgba(196, 181, 253, 0.3);
+        }
+
+        .copy-btn.copied {
+            color: #86efac;
+            border-color: #86efac;
         }
     </style>
 </head>
@@ -206,10 +232,10 @@
                                     href="https://chat.openai.com" target="_blank" rel="noopener">ChatGPT</a> を開く</li>
                             <li>PDFや写真を添付して、以下のメッセージを送る</li>
                         </ol>
-                        <div class="prompt-box">この画像（PDF）に書かれている予定を、以下の形式でテキストに変換してください。
-                            日付、曜日、時間、内容、場所をそれぞれ書き出す
-                            対象学年がある場合は「U-9」「3年生」など対象者ごとに分けて書き出す
-                            余計な補足は不要。予定の情報だけ出力してください</div>
+                        <div class="prompt-box" id="ai-prompt">この画像（PDF）に書かれている予定を、以下の形式でテキストに変換してください。
+                            - 日付、曜日、時間、内容、場所をそれぞれ書き出す
+                            - 対象学年がある場合は「U-9」「3年生」など対象者ごとに分けて書き出す
+                            - 余計な補足は不要。予定の情報だけ出力してください<button class="copy-btn" onclick="copyPrompt()">コピー</button></div>
                         <ol start="3">
                             <li>出力されたテキストをコピーして、予定インポーターに貼り付ける</li>
                         </ol>
@@ -252,7 +278,7 @@
         </main>
 
         <footer>
-            <p>© 2026 Maehes · <a href="/">ホーム</a></p>
+            <p>© 2026 Maehe · <a href="/">ホーム</a></p>
         </footer>
     </div>
 
@@ -260,6 +286,19 @@
     <script>
         function toggleHelp(id) {
             document.getElementById(id).classList.toggle('open');
+        }
+
+        function copyPrompt() {
+            const text = document.getElementById('ai-prompt').innerText.replace('コピー', '').trim();
+            navigator.clipboard.writeText(text).then(() => {
+                const btn = document.querySelector('#ai-prompt .copy-btn');
+                btn.textContent = '✓ コピー済み';
+                btn.classList.add('copied');
+                setTimeout(() => {
+                    btn.textContent = 'コピー';
+                    btn.classList.remove('copied');
+                }, 2000);
+            });
         }
     </script>
 </body>
