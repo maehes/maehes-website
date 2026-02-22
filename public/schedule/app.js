@@ -45,7 +45,17 @@ document.addEventListener('DOMContentLoaded', () => {
         downloadICS();
     });
 
-    // ─── Event Parsing ────────────────────────────────────────────
+    // ─── Event Parsing (multi-line aware) ─────────────────────────
+    /**
+     * LINE messages often split events across multiple lines:
+     *   ◆3月8日(日)◆           ← date header
+     *   ⚽️選抜・育成卒団式       ← title line
+     *   11:15〜12:45            ← time line
+     *   @バディーフィールド       ← location line
+     *
+     * Strategy: iterate lines, carry forward pending date/title/location.
+     * When we find a time, emit an event using all accumulated context.
+     */
     function parseTextAndExtractEvents(text) {
         const events = [];
         const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
@@ -53,42 +63,109 @@ document.addEventListener('DOMContentLoaded', () => {
         const now = new Date();
         let ctxYear = now.getFullYear();
         let ctxMonth = now.getMonth() + 1;
-        let ctxDate = null;
 
-        // Patterns
-        const reMonthOnly = /^[^\d]*(\d{1,2})\s*月/;
+        let pendingDates = [];
+        let pendingTitle = '';
+        let pendingLocation = '';
+
+        // Regex patterns
+        const reMonthCtx = /(\d{1,2})\s*月/;
         const reDateFull = /(\d{4})[年\/\-.](\d{1,2})[月\/\-.](\d{1,2})/;
-        const reDateShort = /(\d{1,2})[月\/](\d{1,2})/;
-        const reDayJa = /^(\d{1,2})\s*日?\s*[（(]?[日月火水木金土]?[）)]?$/;
+        const reDateMD = /(\d{1,2})[月\/](\d{1,2})/g;
+        const reDateDay = /(\d{1,2})\s*日/g;
         const reTimeRange = /(\d{1,2})[:：](\d{2})\s*[〜~\-－]\s*(\d{1,2})[:：](\d{2})/;
         const reTimeSingle = /(\d{1,2})[:：](\d{2})/;
-        const reLocation = /[＠@]([^\s　]+)/;
+        const reLocation = /[＠@]\s*(.+)/;
+        const reLocationWord = /場所\s*[：:]\s*(.+)/;
+        const reDateHeader = /^[◆◇■□▶▷★☆●○]+.*[◆◇■□▶▷★☆●○]+$/;
+        const reOFF = /活動\s*OFF|活動\s*お?休み|^OFF$/i;
 
-        for (const line of lines) {
-            // ── Track month context ──
-            const mMo = line.match(reMonthOnly);
-            if (mMo) ctxMonth = parseInt(mMo[1]);
-
-            // ── Parse date ──
-            let evDate = null;
+        function extractDatesFromLine(line) {
+            const dates = [];
             const mFull = line.match(reDateFull);
-            const mShort = !mFull && line.match(reDateShort);
-            const mDay = !mFull && !mShort && line.match(reDayJa);
-
             if (mFull) {
                 ctxYear = parseInt(mFull[1]);
                 ctxMonth = parseInt(mFull[2]);
-                evDate = makeDate(ctxYear, ctxMonth, parseInt(mFull[3]));
-            } else if (mShort) {
-                ctxMonth = parseInt(mShort[1]);
-                evDate = makeDate(ctxYear, ctxMonth, parseInt(mShort[2]));
-            } else if (mDay) {
-                evDate = makeDate(ctxYear, ctxMonth, parseInt(mDay[1]));
+                dates.push(makeDate(ctxYear, ctxMonth, parseInt(mFull[3])));
+                return dates;
+            }
+            const mdMatches = [...line.matchAll(reDateMD)];
+            if (mdMatches.length > 0) {
+                ctxMonth = parseInt(mdMatches[0][1]);
+                mdMatches.forEach(m => dates.push(makeDate(ctxYear, parseInt(m[1]), parseInt(m[2]))));
+                return dates;
+            }
+            const dayMatches = [...line.matchAll(reDateDay)];
+            if (dayMatches.length > 0) {
+                dayMatches.forEach(m => dates.push(makeDate(ctxYear, ctxMonth, parseInt(m[1]))));
+                return dates;
+            }
+            return dates;
+        }
+
+        function isTitleCandidate(line) {
+            if (reTimeRange.test(line) || reTimeSingle.test(line)) return false;
+            if (/^[＠@]/.test(line)) return false;
+            if (/^※/.test(line)) return false;
+            if (/^場所/.test(line)) return false;
+            if (reOFF.test(line)) return false;
+            // Strip emoji and decorators, check for real text
+            const stripped = line.replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE00}-\u{FE0F}\u{200D}\u{20E3}◆◇■□▶▷★☆●○※]/gu, '').trim();
+            if (stripped.length < 2) return false;
+            if (/^\d{1,2}[月\/]\d{1,2}/.test(stripped)) return false;
+            return /[\u3040-\u30FF\u4E00-\u9FFFA-Za-z]/.test(stripped);
+        }
+
+        // ── Main loop ──
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
+
+            // Track month context
+            const mMonth = line.match(reMonthCtx);
+            if (mMonth) ctxMonth = parseInt(mMonth[1]);
+
+            // ── Date header detection ──
+            const lineDates = extractDatesFromLine(line);
+            if (lineDates.length > 0 && reDateHeader.test(line)) {
+                // Pure date header (◆3月8日(日)◆) → new block
+                pendingDates = lineDates;
+                pendingTitle = '';
+                pendingLocation = '';
+                continue;
+            }
+            if (lineDates.length > 0 && !reTimeRange.test(line) && !reTimeSingle.test(line)) {
+                // Date line without time → probably a header
+                pendingDates = lineDates;
+                pendingTitle = '';
+                pendingLocation = '';
+                // But check if there's also title content after the date
+                const titlePart = cleanTitle(line);
+                if (titlePart.length >= 2 && isTitleCandidate(titlePart)) {
+                    pendingTitle = titlePart;
+                }
+                continue;
             }
 
-            if (evDate) ctxDate = evDate;
+            // ── OFF detection ──
+            if (reOFF.test(line)) {
+                pendingTitle = '';
+                pendingLocation = '';
+                continue;
+            }
 
-            // ── Parse time ──
+            // ── Location detection ──
+            const mLoc = line.match(reLocation);
+            if (mLoc && !reTimeRange.test(line) && !reTimeSingle.test(line)) {
+                pendingLocation = mLoc[1].trim();
+                continue;
+            }
+            const mLocWord = line.match(reLocationWord);
+            if (mLocWord) {
+                pendingLocation = mLocWord[1].trim();
+                continue;
+            }
+
+            // ── Time detection → EMIT EVENT ──
             const mRange = line.match(reTimeRange);
             const mSingle = !mRange && line.match(reTimeSingle);
             let startTime = null, endTime = null;
@@ -101,54 +178,97 @@ document.addEventListener('DOMContentLoaded', () => {
                 endTime = addHour(startTime, 1);
             }
 
-            // ── Parse location ──
-            let location = '';
-            const mLoc = line.match(reLocation);
-            if (mLoc) location = mLoc[1].trim();
+            if (startTime && pendingDates.length > 0) {
+                // Build title: prefer pending, fallback to this line's content
+                let title = pendingTitle || cleanTitle(line);
+                if (!title || title.length < 2) title = '予定';
 
-            // ── Only emit if we have date+time ──
-            if (!startTime) continue;
-            const useDate = evDate || ctxDate;
-            if (!useDate) continue;
+                // Check inline location
+                if (!pendingLocation && mLoc) {
+                    pendingLocation = mLoc[1].trim();
+                }
 
-            const title = extractTitle(line, location);
+                // Look ahead for location
+                if (!pendingLocation) {
+                    for (let j = i + 1; j < lines.length && j <= i + 3; j++) {
+                        const ahead = lines[j];
+                        if (reLocation.test(ahead)) {
+                            pendingLocation = ahead.match(reLocation)[1].trim();
+                            break;
+                        }
+                        // Stop look-ahead if we hit a new date header or time
+                        if (reDateHeader.test(ahead) || extractDatesFromLine(ahead).length > 0) break;
+                    }
+                }
 
-            events.push({
-                date: useDate,
-                startTime,
-                endTime: endTime || addHour(startTime, 1),
-                title: title || '予定',
-                location,
-            });
+                // Emit for each pending date
+                pendingDates.forEach(d => {
+                    events.push({
+                        date: d,
+                        startTime,
+                        endTime: endTime || addHour(startTime, 1),
+                        title,
+                        location: pendingLocation,
+                    });
+                });
+
+                pendingTitle = '';
+                pendingLocation = '';
+                continue;
+            }
+
+            // ── Title candidate line ──
+            if (isTitleCandidate(line) && pendingDates.length > 0) {
+                pendingTitle = cleanTitle(line);
+
+                // Handle "時間未定" — emit with placeholder time
+                const nextLine = i + 1 < lines.length ? lines[i + 1] : '';
+                if (/時間未定|時間調整中|時間は後日/.test(line) || /時間未定|時間調整中|時間は後日/.test(nextLine)) {
+                    // Look ahead for location
+                    for (let j = i + 1; j < lines.length && j <= i + 3; j++) {
+                        if (reLocation.test(lines[j])) {
+                            pendingLocation = lines[j].match(reLocation)[1].trim();
+                            break;
+                        }
+                    }
+                    pendingDates.forEach(d => {
+                        events.push({
+                            date: d,
+                            startTime: '09:00',
+                            endTime: '17:00',
+                            title: pendingTitle || '予定',
+                            location: pendingLocation,
+                        });
+                    });
+                    pendingTitle = '';
+                    pendingLocation = '';
+                }
+            }
         }
         return events;
     }
 
-    function extractTitle(line, location) {
-        let t = line;
+    function cleanTitle(raw) {
+        let t = raw;
+        // Remove emoji
+        t = t.replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE00}-\u{FE0F}\u{200D}\u{20E3}]/gu, '');
+        // Remove decorators and bullets
+        t = t.replace(/[◆◇■□▶▷★☆●○※・•→➡]/g, '');
+        // Remove time patterns
+        t = t.replace(/\d{1,2}[:：]\d{2}\s*[〜~\-－]\s*\d{1,2}[:：]\d{2}/g, '');
+        t = t.replace(/\d{1,2}[:：]\d{2}/g, '');
+        // Remove date patterns
+        t = t.replace(/\d{4}[年\/\-.]\d{1,2}[月\/\-.]\d{1,2}[日]?/g, '');
+        t = t.replace(/\d{1,2}[月\/]\d{1,2}[日]?/g, '');
+        t = t.replace(/\d{1,2}\s*日?\s*[（(][日月火水木金土祝]+[）)]/g, '');
+        t = t.replace(/\d{1,2}\s*日/g, '');
+        t = t.replace(/[（(][日月火水木金土祝]+[）)]/g, '');
         // Remove location
         t = t.replace(/[＠@][^\s　]*/g, '');
-        // Remove time range
-        t = t.replace(/\d{1,2}[:：]\d{2}\s*[〜~\-－]\s*\d{1,2}[:：]\d{2}/g, '');
-        // Remove single time
-        t = t.replace(/\d{1,2}[:：]\d{2}/g, '');
-        // Remove full date
-        t = t.replace(/\d{4}[年\/\-.]\d{1,2}[月\/\-.]\d{1,2}[日]?/g, '');
-        // Remove m/d or m月d日 style date
-        t = t.replace(/\d{1,2}[月\/]\d{1,2}[日]?/g, '');
-        // Remove "20日(土)" style pattern
-        t = t.replace(/\d{1,2}\s*日?\s*[（(][日月火水木金土][）)]/g, '');
-        t = t.replace(/\d{1,2}\s*日/g, '');
-        // Remove standalone weekday in parens: (月) (火) etc.
-        t = t.replace(/[（(][日月火水木金土][）)]/g, '');
-        // Remove bare weekday characters that appear alone (e.g. "土" "日")
-        t = t.replace(/\s[日月火水木金土]\s/g, ' ');
-        // Remove bullet marks and common list prefixes
-        t = t.replace(/[・•◆◇■□▶▷→➡※★☆●○]\s*/g, '');
-        // Remove leftover punctuation
+        // Remove punctuation
         t = t.replace(/[-－〜~、。（）「」【】\[\]()]/g, ' ');
         t = t.replace(/\s+/g, ' ').trim();
-        return t.slice(0, 10);
+        return t.slice(0, 15);
     }
 
     function makeDate(y, m, d) { return `${y}-${pad(m)}-${pad(d)}`; }
