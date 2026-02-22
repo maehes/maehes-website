@@ -135,27 +135,31 @@
 
         .copy-btn {
             position: absolute;
-            top: -14px;
+            top: -26px;
             right: 0;
-            background: var(--primary);
-            border: none;
-            color: white;
+            background: transparent;
+            border: 1px solid rgba(108, 99, 255, 0.3);
+            color: var(--text-muted);
             font-size: 0.72rem;
-            font-weight: 700;
-            padding: 4px 12px;
+            font-weight: 600;
+            padding: 3px 10px;
             border-radius: 100px;
             cursor: pointer;
-            transition: background 0.2s;
+            transition: all 0.2s;
             font-family: var(--font);
             white-space: nowrap;
         }
 
         .copy-btn:hover {
-            background: var(--primary-dark);
+            background: var(--primary-light);
+            border-color: var(--primary);
+            color: var(--primary);
         }
 
         .copy-btn.copied {
-            background: #22c55e;
+            background: #f0fdf4;
+            border-color: #22c55e;
+            color: #15803d;
         }
 
         .prompt-box {
@@ -165,9 +169,9 @@
             padding: 14px 16px;
             font-size: 0.82rem;
             line-height: 1.9;
-            white-space: pre;
+            white-space: pre-wrap;
+            word-break: break-all;
             font-family: monospace;
-            overflow-x: auto;
         }
     </style>
 </head>
@@ -237,11 +241,11 @@
                             <li>PDFや写真を添付して、以下のメッセージを送る</li>
                         </ol>
                         <div class="prompt-wrapper">
-                            <button class="copy-btn" id="copy-btn" onclick="copyPrompt()">コピー</button>
+                            <button class="copy-btn" id="copy-btn" onclick="copyPrompt()">📋 コピー</button>
                             <div class="prompt-box" id="ai-prompt">この画像（PDF）に書かれている予定を、以下の形式でテキストに変換してください。
-                                　- 日付、曜日、時間、内容、場所をそれぞれ書き出す
-                                　- 対象学年がある場合は「U-9」「3年生」など対象者ごとに分けて書き出す
-                                　- 余計な補足は不要。予定の情報だけ出力してください</div>
+                                - 日付、曜日、時間、内容、場所をそれぞれ書き出す
+                                - 対象学年がある場合は「U-9」「3年生」など対象者ごとに分けて書き出す
+                                - 余計な補足は不要。予定の情報だけ出力してください</div>
                         </div>
                         <ol start="3">
                             <li>出力されたテキストをコピーして、予定インポーターに貼り付ける</li>
