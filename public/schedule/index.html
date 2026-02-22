@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>予定インポーター | Maehes</title>
+    <meta name="description" content="LINEメッセージなどのテキストから子どもの習い事スケジュールを自動抽出してICSファイルを作成します" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap"
+        rel="stylesheet" />
+    <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+    <div class="bg-shapes">
+        <div class="shape shape-1"></div>
+        <div class="shape shape-2"></div>
+        <div class="shape shape-3"></div>
+    </div>
+
+    <div class="container">
+        <a href="/" class="back-link">← トップに戻る</a>
+
+        <header class="header">
+            <div class="header-icon">📅</div>
+            <h1>予定インポーター</h1>
+            <p>LINEメッセージなどのテキストから、習い事の予定をGoogleカレンダーに一括登録</p>
+        </header>
+
+        <main>
+            <section class="card" id="input-section">
+                <div class="step-label">Step 1</div>
+                <h2>予定を入力する</h2>
+
+                <div class="input-group">
+                    <label for="text-input">テキストを貼り付け（LINEメッセージなど）</label>
+                    <textarea id="text-input" placeholder="例：
+3月20日 15:00〜16:00 ピアノ @市民センター
+3/25 10:00-12:00 サッカー練習
+4月1日(火) 14:30-16:00 水泳教室"></textarea>
+                </div>
+
+                <button class="btn-primary" id="extract-btn">
+                    <span class="btn-icon">✨</span>予定を抽出する
+                </button>
+            </section>
+
+            <section class="card" id="result-section" style="display:none">
+                <div class="step-label">Step 2</div>
+                <h2>抽出結果を確認・修正する</h2>
+                <p class="section-hint">内容を確認し、必要であれば修正してください。</p>
+
+                <div id="events-container"></div>
+
+                <div class="result-actions">
+                    <button class="btn-secondary" id="add-event-btn">＋ 手動で追加</button>
+                    <button class="btn-primary" id="download-ics-btn">
+                        <span class="btn-icon">⬇️</span>ICSファイルをダウンロード
+                    </button>
+                </div>
+            </section>
+        </main>
+
+        <footer>
+            <p>© 2026 Maehes · <a href="/">ホーム</a></p>
+        </footer>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+
+</html>
