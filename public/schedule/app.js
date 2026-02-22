@@ -134,13 +134,19 @@ document.addEventListener('DOMContentLoaded', () => {
         t = t.replace(/\d{1,2}[:：]\d{2}/g, '');
         // Remove full date
         t = t.replace(/\d{4}[年\/\-.]\d{1,2}[月\/\-.]\d{1,2}[日]?/g, '');
-        // Remove m/d style date
+        // Remove m/d or m月d日 style date
         t = t.replace(/\d{1,2}[月\/]\d{1,2}[日]?/g, '');
-        // Remove day pattern like "20日(土)"
+        // Remove "20日(土)" style pattern
         t = t.replace(/\d{1,2}\s*日?\s*[（(][日月火水木金土][）)]/g, '');
         t = t.replace(/\d{1,2}\s*日/g, '');
-        // Remove punctuation
-        t = t.replace(/[・\-－〜~、。（）「」【】\[\]()]/g, ' ');
+        // Remove standalone weekday in parens: (月) (火) etc.
+        t = t.replace(/[（(][日月火水木金土][）)]/g, '');
+        // Remove bare weekday characters that appear alone (e.g. "土" "日")
+        t = t.replace(/\s[日月火水木金土]\s/g, ' ');
+        // Remove bullet marks and common list prefixes
+        t = t.replace(/[・•◆◇■□▶▷→➡※★☆●○]\s*/g, '');
+        // Remove leftover punctuation
+        t = t.replace(/[-－〜~、。（）「」【】\[\]()]/g, ' ');
         t = t.replace(/\s+/g, ' ').trim();
         return t.slice(0, 10);
     }

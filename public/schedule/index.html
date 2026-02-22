@@ -12,6 +12,134 @@
         href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap"
         rel="stylesheet" />
     <link rel="stylesheet" href="style.css" />
+    <style>
+        .help-section {
+            margin-top: 24px;
+        }
+
+        .help-card {
+            background: var(--card);
+            border: 1.5px solid var(--card-border);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            overflow: hidden;
+        }
+
+        .help-toggle {
+            width: 100%;
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 20px 24px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-align: left;
+            font-family: var(--font);
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--text);
+            transition: background var(--transition);
+        }
+
+        .help-toggle:hover {
+            background: rgba(108, 99, 255, 0.04);
+        }
+
+        .help-toggle-icon {
+            font-size: 1.4rem;
+        }
+
+        .help-toggle-title {
+            flex: 1;
+        }
+
+        .help-chevron {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            transition: transform var(--transition);
+        }
+
+        .help-card.open .help-chevron {
+            transform: rotate(180deg);
+        }
+
+        .help-body {
+            display: none;
+            padding: 0 24px 24px;
+            border-top: 1px solid var(--card-border);
+        }
+
+        .help-card.open .help-body {
+            display: block;
+        }
+
+        .help-body h3 {
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: var(--primary);
+            margin: 20px 0 8px;
+        }
+
+        .help-body ol,
+        .help-body ul {
+            padding-left: 20px;
+            margin: 0;
+        }
+
+        .help-body li {
+            font-size: 0.88rem;
+            color: var(--text-muted);
+            line-height: 1.8;
+        }
+
+        .help-body p {
+            font-size: 0.88rem;
+            color: var(--text-muted);
+            line-height: 1.7;
+            margin-top: 8px;
+        }
+
+        .help-body a {
+            color: var(--primary);
+        }
+
+        .help-tip {
+            background: #eff6ff;
+            border-left: 3px solid #3b82f6;
+            border-radius: 0 8px 8px 0;
+            padding: 10px 14px;
+            margin-top: 14px;
+            font-size: 0.85rem;
+            color: #1e40af;
+            line-height: 1.6;
+        }
+
+        .help-success {
+            background: #f0fdf4;
+            border-left: 3px solid #22c55e;
+            border-radius: 0 8px 8px 0;
+            padding: 10px 14px;
+            margin-top: 14px;
+            font-size: 0.85rem;
+            color: #15803d;
+            line-height: 1.6;
+        }
+
+        .prompt-box {
+            background: #1e1b4b;
+            color: #c4b5fd;
+            border-radius: 10px;
+            padding: 14px 16px;
+            margin: 12px 0;
+            font-size: 0.82rem;
+            line-height: 1.8;
+            white-space: pre-wrap;
+            font-family: monospace;
+        }
+    </style>
 </head>
 
 <body>
@@ -31,10 +159,10 @@
         </header>
 
         <main>
+            <!-- STEP 1: Input -->
             <section class="card" id="input-section">
                 <div class="step-label">Step 1</div>
                 <h2>予定を入力する</h2>
-
                 <div class="input-group">
                     <label for="text-input">テキストを貼り付け（LINEメッセージなど）</label>
                     <textarea id="text-input" placeholder="例：
@@ -42,19 +170,17 @@
 3/25 10:00-12:00 サッカー練習
 4月1日(火) 14:30-16:00 水泳教室"></textarea>
                 </div>
-
                 <button class="btn-primary" id="extract-btn">
                     <span class="btn-icon">✨</span>予定を抽出する
                 </button>
             </section>
 
+            <!-- STEP 2: Results -->
             <section class="card" id="result-section" style="display:none">
                 <div class="step-label">Step 2</div>
                 <h2>抽出結果を確認・修正する</h2>
                 <p class="section-hint">内容を確認し、必要であれば修正してください。</p>
-
                 <div id="events-container"></div>
-
                 <div class="result-actions">
                     <button class="btn-secondary" id="add-event-btn">＋ 手動で追加</button>
                     <button class="btn-primary" id="download-ics-btn">
@@ -62,6 +188,67 @@
                     </button>
                 </div>
             </section>
+
+            <!-- Help: PDF/Photos -->
+            <div class="help-section">
+                <div class="help-card" id="help-pdf">
+                    <button class="help-toggle" onclick="toggleHelp('help-pdf')">
+                        <span class="help-toggle-icon">📄</span>
+                        <span class="help-toggle-title">PDFや写真から予定を取り込む方法</span>
+                        <span class="help-chevron">▼</span>
+                    </button>
+                    <div class="help-body">
+                        <p>学校のお便りや習い事のスケジュール表がPDFや写真の場合、そのままでは予定インポーターに貼り付けられません。AI（Gemini、ChatGPTなど）を使えば、かんたんにテキスト化できます。
+                        </p>
+                        <h3>やり方</h3>
+                        <ol>
+                            <li><a href="https://gemini.google.com" target="_blank" rel="noopener">Gemini</a> や <a
+                                    href="https://chat.openai.com" target="_blank" rel="noopener">ChatGPT</a> を開く</li>
+                            <li>PDFや写真を添付して、以下のメッセージを送る</li>
+                        </ol>
+                        <div class="prompt-box">この画像（PDF）に書かれている予定を、以下の形式でテキストに変換してください。
+                            日付、曜日、時間、内容、場所をそれぞれ書き出す
+                            対象学年がある場合は「U-9」「3年生」など対象者ごとに分けて書き出す
+                            余計な補足は不要。予定の情報だけ出力してください</div>
+                        <ol start="3">
+                            <li>出力されたテキストをコピーして、予定インポーターに貼り付ける</li>
+                        </ol>
+                        <div class="help-tip">💡 複雑な表形式のPDFの場合は、「対象：U-9のみ抽出してください」のように対象を指定するとより正確に抽出できます</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Help: iPhone Calendar -->
+            <div class="help-section">
+                <div class="help-card" id="help-iphone">
+                    <button class="help-toggle" onclick="toggleHelp('help-iphone')">
+                        <span class="help-toggle-icon">📱</span>
+                        <span class="help-toggle-title">iPhoneでGoogleカレンダーに反映する設定</span>
+                        <span class="help-chevron">▼</span>
+                    </button>
+                    <div class="help-body">
+                        <h3>ステップ１：Googleアカウントを追加する</h3>
+                        <ol>
+                            <li>「設定」アプリを開く</li>
+                            <li>「アプリ」をタップ</li>
+                            <li>「カレンダー」をタップ</li>
+                            <li>「カレンダーアカウント」をタップ</li>
+                            <li>「アカウントを追加」をタップ</li>
+                            <li>「Google」を選択してログイン</li>
+                        </ol>
+                        <h3>ステップ２：デフォルトカレンダーを変更する</h3>
+                        <ol>
+                            <li>「設定」アプリを開く</li>
+                            <li>「アプリ」をタップ</li>
+                            <li>「カレンダー」をタップ</li>
+                            <li>「デフォルトカレンダー」をタップ</li>
+                            <li>予定を登録したいカレンダーを選択（家族と共有しているカレンダーなど）</li>
+                        </ol>
+                        <div class="help-success">✅ 家族とGoogleカレンダーを共有している場合は、共有カレンダーを選択すると、家族全員の端末に予定が反映されます。</div>
+                    </div>
+                </div>
+            </div>
+
         </main>
 
         <footer>
@@ -70,6 +257,11 @@
     </div>
 
     <script src="app.js"></script>
+    <script>
+        function toggleHelp(id) {
+            document.getElementById(id).classList.toggle('open');
+        }
+    </script>
 </body>
 
 </html>
