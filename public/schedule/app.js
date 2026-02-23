@@ -126,16 +126,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // ── Date header detection ──
             const lineDates = extractDatesFromLine(line);
+            if (lineDates.length > 0) {
+                pendingDates = lineDates;
+            }
+
             if (lineDates.length > 0 && reDateHeader.test(line)) {
                 // Pure date header (◆3月8日(日)◆) → new block
-                pendingDates = lineDates;
                 pendingTitle = '';
                 pendingLocation = '';
                 continue;
             }
             if (lineDates.length > 0 && !reTimeRange.test(line) && !reTimeSingle.test(line)) {
                 // Date line without time → probably a header
-                pendingDates = lineDates;
                 pendingTitle = '';
                 pendingLocation = '';
                 // But check if there's also title content after the date
